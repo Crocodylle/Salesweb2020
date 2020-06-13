@@ -2,30 +2,32 @@
 using SalesWebMvc.Models;
 using SalesWebMvc.Models.ViewModels;
 using SalesWebMvc.Services;
+using SalesWebMvc.Services.Exceptions;
+using System.Collections.Generic;
 
 namespace SalesWebMvc.Controllers
 {
     public class SellersController : Controller
     {
         private readonly SellerService _sellerService;
-        private readonly DepartmentServices _departmentServices;
+        private readonly DepartmentServices _departmentsServices;
 
         public SellersController(SellerService sellerService, DepartmentServices departmentServices)
         {
             _sellerService = sellerService;
-            _departmentServices = departmentServices; 
+            _departmentsServices = departmentServices;
         }
 
         public IActionResult Index()
         {
-            var list = _sellerService.FindAll(); 
+            var list = _sellerService.FindAll();
             return View(list);
         }
 
         public IActionResult Create()
         {
-            var departments = _departmentServices.FindAll();
-            var viewModel = new SellerFormViewModel { Departments = departments }; 
+            var departments = _departmentsServices.FindAll();
+            var viewModel = new SellerFormViewModel { Departments = departments };
             return View(viewModel);
         }
 
@@ -40,13 +42,13 @@ namespace SalesWebMvc.Controllers
         {
             if (id == null)
             {
-                return NotFound(); 
+                return NotFound();
             }
 
             var obj = _sellerService.FindById(id.Value);
-            if(obj == null)
+            if (obj == null)
             {
-                return NotFound(); 
+                return NotFound();
             }
             return View(obj);
         }
@@ -61,16 +63,56 @@ namespace SalesWebMvc.Controllers
 
         public IActionResult Details(int? id)
         {
-            if(id == null)
+            if (id == null)
             {
-                return NotFound(); 
+                return NotFound();
             }
-            var obj = _sellerService.FindById(id.Value); 
-            if(obj == null)
+            var obj = _sellerService.FindById(id.Value);
+            if (obj == null)
             {
-                return NotFound(); 
+                return NotFound();
             }
-            return View(obj); 
+            return View(obj);
+        }
+
+        public IActionResult Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+            var obj = _sellerService.FindById(id.Value);
+            if (obj == null)
+            {
+                return NotFound();
+            }
+
+            List<Department> departments = _departmentsServices.FindAll();
+            SellerFormViewModel viewModel = new SellerFormViewModel { Seller = obj, Departments = departments };
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(int id, Seller seller)
+        {
+            if (id != seller.Id)
+            {
+                return BadRequest();
+            }
+            try
+            {
+                _sellerService.Update(seller);
+                return RedirectToAction(nameof(Index));
+            }
+            catch (NotFoundException)
+            {
+                return NotFound();
+            }
+            catch (DbConcurrencyException)
+            {
+                return BadRequest();
+            }
         }
     }
 }
